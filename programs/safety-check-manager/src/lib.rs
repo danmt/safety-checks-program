@@ -174,16 +174,16 @@ pub struct CreateInspector<'info> {
     pub site: Account<'info, Site>,
     #[account(mut, constraint = authority.key() == site.authority.key())]
     pub authority: Signer<'info>,
+    #[account(mut)]
+    pub owner: SystemAccount<'info>,
     #[account(
         init,
         payer = authority,
         space = Inspector::SIZE,
-        seeds = [b"inspector", site_id.as_bytes(), authority.key().as_ref()],
+        seeds = [b"inspector", site_id.as_bytes(), owner.key().as_ref()],
         bump
     )]
     pub inspector: Account<'info, Inspector>,
-    #[account(mut)]
-    pub owner: SystemAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 

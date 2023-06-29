@@ -3,6 +3,7 @@ import {
   ComputeBudgetInstruction,
   ComputeBudgetProgram,
   Keypair,
+  LAMPORTS_PER_SOL,
   PublicKey,
   SystemProgram,
   SYSVAR_RENT_PUBKEY,
@@ -62,7 +63,7 @@ describe("Test", () => {
       [
         Buffer.from("inspector", "utf-8"),
         Buffer.from(siteId, "utf-8"),
-        provider.wallet.publicKey.toBuffer(),
+        bobKeypair.publicKey.toBuffer(),
       ],
       safetyCheckProgram.programId
     );
@@ -112,6 +113,7 @@ describe("Test", () => {
       ],
       TOKEN_METADATA_PROGRAM_ID
     );
+    await provider.connection.requestAirdrop(bobKeypair.publicKey, LAMPORTS_PER_SOL);
   });
 
   it("should create a site", async () => {
@@ -178,35 +180,36 @@ describe("Test", () => {
   it("should create a safety check", async () => {
     // act
     await safetyCheckProgram.methods
-      .createSafetyCheck(
-        siteId,
-        deviceId,
-        safetyCheckId,
-        safetyCheckName,
-        safetyCheckSymbol,
-        safetyCheckUri,
-        new anchor.BN(safetyCheckDurationInDays)
-      )
-      .accounts({
-        systemProgram: SystemProgram.programId,
-        tokenProgram: TOKEN_PROGRAM_ID,
-        metadataProgram: TOKEN_METADATA_PROGRAM_ID,
-        associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
-        rent: SYSVAR_RENT_PUBKEY,
-        authority: provider.wallet.publicKey,
-        site: sitePubkey,
-        device: devicePubkey,
-        inspector: inspectorPubkey,
-        safetyCheck: safetyCheckPubkey,
-        safetyCheckMint: safetyCheckMintPubkey,
-        deviceSafetyCheckVault: deviceSafetyCheckVaultPubkey,
-        safetyCheckMetadata: safetyCheckMetadataPubkey,
-        safetyCheckMasterEdition: safetyCheckMasterEditionPubkey,
-      })
-      .preInstructions([
-        ComputeBudgetProgram.setComputeUnitLimit({ units: 300_000 }),
-      ])
-      .rpc({ commitment: "confirmed" });
+    .createSafetyCheck(
+      siteId,
+      deviceId,
+      safetyCheckId,
+      safetyCheckName,
+      safetyCheckSymbol,
+      safetyCheckUri,
+      new anchor.BN(safetyCheckDurationInDays)
+    )
+    .accounts({
+      systemProgram: SystemProgram.programId,
+      tokenProgram: TOKEN_PROGRAM_ID,
+      metadataProgram: TOKEN_METADATA_PROGRAM_ID,
+      associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+      rent: SYSVAR_RENT_PUBKEY,
+      authority: bobKeypair.publicKey,
+      site: sitePubkey,
+      device: devicePubkey,
+      inspector: inspectorPubkey,
+      safetyCheck: safetyCheckPubkey,
+      safetyCheckMint: safetyCheckMintPubkey,
+      deviceSafetyCheckVault: deviceSafetyCheckVaultPubkey,
+      safetyCheckMetadata: safetyCheckMetadataPubkey,
+      safetyCheckMasterEdition: safetyCheckMasterEditionPubkey,
+    })
+    .signers([bobKeypair])
+    .preInstructions([
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 300_000 }),
+    ])
+    .rpc({ commitment: "confirmed" });
     // assert
     const deviceAccount = await safetyCheckProgram.account.device.fetchNullable(
       devicePubkey
