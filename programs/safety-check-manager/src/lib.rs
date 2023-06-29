@@ -17,14 +17,17 @@ declare_id!("4WJv7r8mzjydzhYRdG3yCGEmZmQT1KQUyxFrT1keaBWC");
 pub mod safety_check_manager {
     use super::*;
 
-    pub fn create_site(ctx: Context<CreateSite>, _site_id: String) -> Result<()> {
+    pub fn create_site(ctx: Context<CreateSite>, site_id: String) -> Result<()> {
         (*ctx.accounts.site).authority = ctx.accounts.authority.key();
+        (*ctx.accounts.site).site_id = site_id;
         (*ctx.accounts.site).bump = *ctx.bumps.get("site").unwrap();
 
         Ok(())
     }
 
-    pub fn create_inspector(ctx: Context<CreateInspector>, _site_id: String) -> Result<()> {
+    pub fn create_inspector(ctx: Context<CreateInspector>, site_id: String) -> Result<()> {
+        (*ctx.accounts.inspector).owner = ctx.accounts.owner.key();
+        (*ctx.accounts.inspector).site_id = site_id;
         (*ctx.accounts.inspector).bump = *ctx.bumps.get("inspector").unwrap();
 
         Ok(())
@@ -32,9 +35,11 @@ pub mod safety_check_manager {
 
     pub fn create_device(
         ctx: Context<CreateDevice>,
-        _site_id: String,
-        _device_id: String,
+        site_id: String,
+        device_id: String,
     ) -> Result<()> {
+        (*ctx.accounts.device).site_id = site_id;
+        (*ctx.accounts.device).device_id = device_id;
         (*ctx.accounts.device).expires_at = None;
         (*ctx.accounts.device).last_safety_check = None;
         (*ctx.accounts.device).bump = *ctx.bumps.get("device").unwrap();
@@ -46,7 +51,7 @@ pub mod safety_check_manager {
         ctx: Context<CreateSafetyCheck>,
         site_id: String,
         device_id: String,
-        _safety_check_id: String,
+        safety_check_id: String,
         name: String,
         symbol: String,
         uri: String,
@@ -56,6 +61,9 @@ pub mod safety_check_manager {
         let created_at = clock.unix_timestamp;
         let expires_at = created_at + duration_in_days * 86400;
 
+        (*ctx.accounts.safety_check).site_id = site_id.clone();
+        (*ctx.accounts.safety_check).device_id = device_id.clone();
+        (*ctx.accounts.safety_check).safety_check_id = safety_check_id.clone();
         (*ctx.accounts.safety_check).inspector = ctx.accounts.inspector.key();
         (*ctx.accounts.safety_check).created_at = created_at;
         (*ctx.accounts.safety_check).duration_in_days = duration_in_days;
@@ -174,6 +182,8 @@ pub struct CreateInspector<'info> {
         bump
     )]
     pub inspector: Account<'info, Inspector>,
+    #[account(mut)]
+    pub owner: SystemAccount<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -220,18 +230,18 @@ pub struct CreateSafetyCheck<'info> {
         seeds = [b"site", site_id.as_bytes()],
         bump = site.bump
     )]
-    pub site: Account<'info, Site>,
+    pub site: Box<Account<'info, Site>>,
     #[account(
         mut,
         seeds = [b"device", site_id.as_bytes(), device_id.as_bytes()],
         bump = device.bump
     )]
-    pub device: Account<'info, Device>,
+    pub device: Box<Account<'info, Device>>,
     #[account(
         seeds = [b"inspector", site_id.as_bytes(), authority.key().as_ref()],
         bump = inspector.bump
     )]
-    pub inspector: Account<'info, Inspector>,
+    pub inspector: Box<Account<'info, Inspector>>,
     #[account(
         init,
         seeds = [b"safety_check", site_id.as_bytes(), device_id.as_bytes(), safety_check_id.as_bytes()],
@@ -239,7 +249,7 @@ pub struct CreateSafetyCheck<'info> {
         payer = authority,
         space = SafetyCheck::SIZE,
     )]
-    pub safety_check: Account<'info, SafetyCheck>,
+    pub safety_check: Box<Account<'info, SafetyCheck>>,
     #[account(
         init, 
         payer = authority,
@@ -290,35 +300,43 @@ pub struct CreateSafetyCheck<'info> {
 #[account]
 pub struct Site {
     pub authority: Pubkey,
+    pub site_id: String,
     pub bump: u8,
 }
 
 impl Site {
-    pub const SIZE: usize = 8 + 32 + 1;
+    pub const SIZE: usize = 8 + 32 + 36 + 1;
 }
 
 #[account]
 pub struct Inspector {
+    pub owner: Pubkey,
+    pub site_id: String,
     pub bump: u8,
 }
 
 impl Inspector {
-    pub const SIZE: usize = 8 + 1;
+    pub const SIZE: usize = 8 + 32 + 36 + 1;
 }
 
 #[account]
 pub struct Device {
+    pub site_id: String,
+    pub device_id: String,
     pub expires_at: Option<i64>,
     pub last_safety_check: Option<Pubkey>,
     pub bump: u8,
 }
 
 impl Device {
-    pub const SIZE: usize = 8 + 9 + 33 + 1;
+    pub const SIZE: usize = 8 + 36 + 36 + 9 + 33 + 1;
 }
 
 #[account]
 pub struct SafetyCheck {
+    pub site_id: String,
+    pub device_id: String,
+    pub safety_check_id: String,
     pub inspector: Pubkey,
     pub created_at: i64,
     pub duration_in_days: i64,
@@ -330,5 +348,5 @@ pub struct SafetyCheck {
 }
 
 impl SafetyCheck {
-    pub const SIZE: usize = 8 + 32 + 8 + 8 + 8 + 1 + 1 + 1 + 1;
+    pub const SIZE: usize = 8 + 32 + 36 + 36 + 36 + 8 + 8 + 8 + 1 + 1 + 1 + 1;
 }

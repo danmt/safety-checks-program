@@ -1,5 +1,12 @@
 import * as anchor from "@coral-xyz/anchor";
-import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
+import {
+  ComputeBudgetInstruction,
+  ComputeBudgetProgram,
+  Keypair,
+  PublicKey,
+  SystemProgram,
+  SYSVAR_RENT_PUBKEY,
+} from "@solana/web3.js";
 import { assert } from "chai";
 import { IDL, SafetyCheckManager } from "../target/types/safety_check_manager";
 
@@ -28,13 +35,14 @@ describe("Test", () => {
     provider
   );
 
-  const siteId = "123";
-  const deviceId = getRandomArbitrary(0, 99999999).toString();
-  const safetyCheckId = "123";
+  const siteId = getRandomArbitrary(0, 999999999999999).toString();
+  const deviceId = getRandomArbitrary(0, 999999999999999).toString();
+  const safetyCheckId = getRandomArbitrary(0, 999999999999999).toString();
   const safetyCheckName = "Safety Check";
   const safetyCheckSymbol = "SAFE";
   const safetyCheckUri = "https://www.google.com";
   const safetyCheckDurationInDays = 5;
+  const bobKeypair = Keypair.generate();
 
   let sitePubkey: PublicKey;
   let inspectorPubkey: PublicKey;
@@ -109,7 +117,7 @@ describe("Test", () => {
   it("should create a site", async () => {
     // act
     await safetyCheckProgram.methods
-      .createSite(safetyCheckId)
+      .createSite(siteId)
       .accounts({
         authority: provider.wallet.publicKey,
         site: sitePubkey,
@@ -122,6 +130,7 @@ describe("Test", () => {
     );
     assert.notEqual(siteAccount, null);
     assert.equal(siteAccount.authority.equals(provider.wallet.publicKey), true);
+    assert.equal(siteAccount.siteId, siteId);
   });
 
   it("should create a inspector", async () => {
@@ -133,12 +142,15 @@ describe("Test", () => {
         site: sitePubkey,
         inspector: inspectorPubkey,
         systemProgram: SystemProgram.programId,
+        owner: bobKeypair.publicKey,
       })
       .rpc({ commitment: "confirmed" });
     // assert
     const inspectorAccount =
       await safetyCheckProgram.account.inspector.fetchNullable(inspectorPubkey);
     assert.notEqual(inspectorAccount, null);
+    assert.equal(inspectorAccount.owner.equals(bobKeypair.publicKey), true);
+    assert.equal(inspectorAccount.siteId, siteId);
   });
 
   it("should create a device", async () => {
@@ -157,6 +169,8 @@ describe("Test", () => {
       devicePubkey
     );
     assert.notEqual(deviceAccount, null);
+    assert.equal(deviceAccount.siteId, siteId);
+    assert.equal(deviceAccount.deviceId, deviceId);
     assert.equal(deviceAccount.lastSafetyCheck, null);
     assert.equal(deviceAccount.expiresAt, null);
   });
@@ -189,6 +203,9 @@ describe("Test", () => {
         safetyCheckMetadata: safetyCheckMetadataPubkey,
         safetyCheckMasterEdition: safetyCheckMasterEditionPubkey,
       })
+      .preInstructions([
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 300_000 }),
+      ])
       .rpc({ commitment: "confirmed" });
     // assert
     const deviceAccount = await safetyCheckProgram.account.device.fetchNullable(
@@ -199,6 +216,9 @@ describe("Test", () => {
         safetyCheckPubkey
       );
     assert.notEqual(safetyCheckAccount, null);
+    assert.equal(safetyCheckAccount.siteId, siteId);
+    assert.equal(safetyCheckAccount.deviceId, deviceId);
+    assert.equal(safetyCheckAccount.safetyCheckId, safetyCheckId);
     assert.equal(safetyCheckAccount.inspector.equals(inspectorPubkey), true);
     assert.equal(
       safetyCheckAccount.durationInDays.eq(
