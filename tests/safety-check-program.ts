@@ -1,7 +1,7 @@
-import * as anchor from '@coral-xyz/anchor';
-import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from '@solana/web3.js';
-import { assert } from 'chai';
-import { IDL, SafetyCheckManager } from '../target/types/safety_check_manager';
+import * as anchor from "@coral-xyz/anchor";
+import { PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
+import { assert } from "chai";
+import { IDL, SafetyCheckManager } from "../target/types/safety_check_manager";
 
 function getRandomArbitrary(min: number, max: number) {
   return Math.floor(Math.random() * (max - min) + min);
@@ -18,16 +18,19 @@ const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
 );
 const SAFETY_CHECK_MANAGER_PROGRAM_ID = new PublicKey(
   "4WJv7r8mzjydzhYRdG3yCGEmZmQT1KQUyxFrT1keaBWC"
-)
-
+);
 
 describe("Test", () => {
   const provider = anchor.AnchorProvider.local();
-  const safetyCheckProgram = new anchor.Program<SafetyCheckManager>(IDL, SAFETY_CHECK_MANAGER_PROGRAM_ID, provider)
+  const safetyCheckProgram = new anchor.Program<SafetyCheckManager>(
+    IDL,
+    SAFETY_CHECK_MANAGER_PROGRAM_ID,
+    provider
+  );
 
-  const siteId = '123';
+  const siteId = "123";
   const deviceId = getRandomArbitrary(0, 99999999).toString();
-  const safetyCheckId = '123';
+  const safetyCheckId = "123";
   const safetyCheckName = "Safety Check";
   const safetyCheckSymbol = "SAFE";
   const safetyCheckUri = "https://www.google.com";
@@ -104,29 +107,19 @@ describe("Test", () => {
   });
 
   it("should create a site", async () => {
-    console.log('i do get here', siteId, {
-      authority: provider.wallet.publicKey.toBase58(),
-      site: sitePubkey.toBase58(),
-      systemProgram: SystemProgram.programId.toBase58(),
-    })
-
     // act
-
-    try {
-      
-      await safetyCheckProgram.methods
-        .createSite(safetyCheckId)
-        .accounts({
-          authority: provider.wallet.publicKey,
-          site: sitePubkey,
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc();
-    } catch (error) {
-      console.log(error)
-    }
+    await safetyCheckProgram.methods
+      .createSite(safetyCheckId)
+      .accounts({
+        authority: provider.wallet.publicKey,
+        site: sitePubkey,
+        systemProgram: SystemProgram.programId,
+      })
+      .rpc();
     // assert
-    const siteAccount = await safetyCheckProgram.account.site.fetchNullable(sitePubkey);
+    const siteAccount = await safetyCheckProgram.account.site.fetchNullable(
+      sitePubkey
+    );
     assert.notEqual(siteAccount, null);
     assert.equal(siteAccount.authority.equals(provider.wallet.publicKey), true);
   });
@@ -143,9 +136,8 @@ describe("Test", () => {
       })
       .rpc({ commitment: "confirmed" });
     // assert
-    const inspectorAccount = await safetyCheckProgram.account.inspector.fetchNullable(
-      inspectorPubkey
-    );
+    const inspectorAccount =
+      await safetyCheckProgram.account.inspector.fetchNullable(inspectorPubkey);
     assert.notEqual(inspectorAccount, null);
   });
 
@@ -203,11 +195,15 @@ describe("Test", () => {
       devicePubkey
     );
     const safetyCheckAccount =
-      await safetyCheckProgram.account.safetyCheck.fetchNullable(safetyCheckPubkey);
+      await safetyCheckProgram.account.safetyCheck.fetchNullable(
+        safetyCheckPubkey
+      );
     assert.notEqual(safetyCheckAccount, null);
     assert.equal(safetyCheckAccount.inspector.equals(inspectorPubkey), true);
     assert.equal(
-      safetyCheckAccount.durationInDays.eq(new anchor.BN(safetyCheckDurationInDays)),
+      safetyCheckAccount.durationInDays.eq(
+        new anchor.BN(safetyCheckDurationInDays)
+      ),
       true
     );
     assert.equal(
