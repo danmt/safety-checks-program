@@ -42,6 +42,7 @@ pub mod safety_check_manager {
         (*ctx.accounts.device).device_id = device_id;
         (*ctx.accounts.device).expires_at = None;
         (*ctx.accounts.device).last_safety_check = None;
+        (*ctx.accounts.device).inspector = None;
         (*ctx.accounts.device).bump = *ctx.bumps.get("device").unwrap();
 
         Ok(())
@@ -76,6 +77,7 @@ pub mod safety_check_manager {
             *ctx.bumps.get("safety_check_master_edition").unwrap();
         (*ctx.accounts.device).expires_at = Some(expires_at);
         (*ctx.accounts.device).last_safety_check = Some(ctx.accounts.safety_check.key());
+        (*ctx.accounts.device).inspector = Some(ctx.accounts.inspector.key());
 
         let seeds = &[
             b"device".as_ref(),
@@ -325,11 +327,12 @@ pub struct Device {
     pub device_id: String,
     pub expires_at: Option<i64>,
     pub last_safety_check: Option<Pubkey>,
+    pub inspector: Option<Pubkey>,
     pub bump: u8,
 }
 
 impl Device {
-    pub const SIZE: usize = 8 + 36 + 36 + 9 + 33 + 1;
+    pub const SIZE: usize = 8 + 36 + 36 + 9 + 33 + 33 + 1;
 }
 
 #[account]

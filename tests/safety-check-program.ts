@@ -240,5 +240,6 @@ describe("Test", () => {
       true
     );
     assert.equal(deviceAccount.lastSafetyCheck.equals(safetyCheckPubkey), true);
+    assert.equal(deviceAccount.inspector.equals(inspectorPubkey), true);
   });
 });
